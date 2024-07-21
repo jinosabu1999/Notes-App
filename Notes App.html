@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes App</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f4f8;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease;
+        }
+
+        .dark-mode {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .dark-mode .container {
+            background: #2d3748;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .toggle-dark-mode {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .dark-mode .toggle-dark-mode {
+            color: #e2e8f0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 36px;
+        }
+
+        .dark-mode h1 {
+            color: #e2e8f0;
+        }
+
+        .search-bar {
+            display: flex;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .search-bar input {
+            flex-grow: 1;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #4299e1;
+            font-size: 18px;
+        }
+
+        .dark-mode .search-bar input {
+            background: #4a5568;
+            color: #e2e8f0;
+            border-color: #718096;
+        }
+
+        .dark-mode .search-icon {
+            color: red;
+        }
+
+        .note-input {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        .note-input textarea, .note-input input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            resize: none;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .note-input textarea, .dark-mode .note-input input {
+            background: #4a5568;
+            color: #e2e8f0;
+            border-color: #718096;
+        }
+
+        .note-input textarea:focus, .note-input input:focus {
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+            outline: none;
+        }
+
+        .note-input button {
+            padding: 12px;
+            font-size: 16px;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .note-input button:hover {
+            background-color: #3182ce;
+        }
+
+        .notes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .note {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+
+        .dark-mode .note {
+            background: #4a5568;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .note:hover {
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(-5px);
+        }
+
+        .note button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: transparent;
+            color: #4a5568;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .note button:hover {
+            color: #e53e3e;
+        }
+
+        .note .edit-button {
+            right: 40px;
+            color: #4299e1;
+        }
+        
+        .note .edit-button:hover {
+            color: #3182ce;
+        }
+
+        .note p {
+            margin: 0;
+            padding: 0;
+            word-wrap: break-word;
+        }
+
+        .dark-mode .note p {
+            color: #e2e8f0;
+        }
+
+        .note .tag {
+            display: inline-block;
+            background-color: #edf2f7;
+            color: #4a5568;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .dark-mode .note .tag {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+
+        .filters {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .filter-button {
+            background-color: #edf2f7;
+            color: #4a5568;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .dark-mode .filter-button {
+            background-color: #4a5568;
+            color: #e2e8f0;
+        }
+
+        .filter-button:hover, .filter-button.active {
+            background-color: #4299e1;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="toggle-dark-mode" id="toggleDarkMode" onclick="toggleDarkMode()">
+            🌙
+        </div>
+        <h1>Notes App</h1>
+        <div class="search-bar">
+            <input type="text" id="searchText" placeholder="Search notes..." oninput="filterNotes()">
+            <i class="fas fa-search search-icon"></i>
+        </div>
+        <div class="filters">
+            <button class="filter-button active" onclick="filterByDate('all')">All</button>
+            <button class="filter-button" onclick="filterByDate('today')">Today</button>
+            <button class="filter-button" onclick="filterByDate('week')">This Week</button>
+            <button class="filter-button" onclick="filterByDate('month')">This Month</button>
+        </div>
+        <div class="note-input">
+            <textarea id="noteText" placeholder="Write your note here..."></textarea>
+            <input type="text" id="noteTag" placeholder="Tag (optional)">
+            <button onclick="addNote()">Add Note</button>
+        </div>
+        <div class="notes" id="notes">
+            <!-- Notes will appear here -->
+        </div>
+    </div>
+    <script>
+        // Load notes from localStorage when the page loads
+        window.onload = function () {
+            loadNotes();
+            loadDarkModePreference();
+        };
+
+        // Function to load notes from localStorage
+        function loadNotes() {
+            const savedNotes = JSON.parse(localStorage.getItem('notes')) || [];
+            savedNotes.forEach(note => {
+                createNoteElement(note.text, note.tag, note.date);
+            });
+        }
+
+        // Function to create a note element
+        function createNoteElement(noteText, noteTag, noteDate) {
+            const note = document.createElement('div');
+            note.classList.add('note');
+
+            const noteContent = document.createElement('p');
+            noteContent.innerText = noteText;
+
+            const noteTagElement = document.createElement('span');
+            noteTagElement.classList.add('tag');
+            noteTagElement.innerText = noteTag || 'Untagged';
+
+            const deleteButton = document.createElement('button');
+            deleteButton.innerHTML = '<i class="fas fa-trash" style="color: red;"></i>';
+            deleteButton.onclick = function () {
+                note.remove();
+                saveNotes();
+            };
+
+            const editButton = document.createElement('button');
+            editButton.innerHTML = '<i class="fas fa-edit"></i>';
+            editButton.classList.add('edit-button');
+            editButton.onclick = function () {
+                editNote(note, noteText, noteTag);
+            };
+
+            note.appendChild(noteContent);
+            note.appendChild(noteTagElement);
+            note.appendChild(deleteButton);
+            note.appendChild(editButton);
+            note.dataset.date = noteDate || new Date().toISOString();
+
+            document.getElementById('notes').prepend(note);
+        }
+
+        // Function to add a note
+        function addNote() {
+            const noteText = document.getElementById('noteText').value;
+            const noteTag = document.getElementById('noteTag').value;
+            if (noteText.trim() === "") {
+                alert("Note cannot be empty!");
+                return;
+            }
+
+            createNoteElement(noteText, noteTag, new Date().toISOString());
+            document.getElementById('noteText').value = "";
+            document.getElementById('noteTag').value = "";
+            saveNotes();
+        }
+
+        // Function to save notes to localStorage
+        function saveNotes() {
+            const notes = [];
+            document.querySelectorAll('.note').forEach(note => {
+                const noteText = note.querySelector('p').innerText;
+                const noteTag = note.querySelector('.tag').innerText;
+                const noteDate = note.dataset.date;
+                notes.push({ text: noteText, tag: noteTag, date: noteDate });
+            });
+            localStorage.setItem('notes', JSON.stringify(notes));
+        }
+
+        // Function to edit a note
+        function editNote(noteElement, oldText, oldTag) {
+            const newText = prompt("Edit your note:", oldText);
+            const newTag = prompt("Edit your tag:", oldTag);
+            if (newText === null || newText.trim() === "") return;
+            noteElement.querySelector('p').innerText = newText;
+            noteElement.querySelector('.tag').innerText = newTag || 'Untagged';
+            saveNotes();
+        }
+
+        // Function to filter notes based on search input
+        function filterNotes() {
+            const searchText = document.getElementById('searchText').value.toLowerCase();
+            document.querySelectorAll('.note').forEach(note => {
+                const noteText = note.querySelector('p').innerText.toLowerCase();
+                const noteTag = note.querySelector('.tag').innerText.toLowerCase();
+                if (noteText.includes(searchText) || noteTag.includes(searchText)) {
+                    note.style.display = "";
+                } else {
+                    note.style.display = "none";
+                }
+            });
+        }
+
+        // Function to filter notes by date
+        function filterByDate(period) {
+            const now = new Date();
+            const notes = document.querySelectorAll('.note');
+            
+            notes.forEach(note => {
+                const noteDate = new Date(note.dataset.date);
+                let show = false;
+
+                switch(period) {
+                    case 'today':
+                        show = noteDate.toDateString() === now.toDateString();
+                        break;
+                    case 'week':
+                        const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+                        show = noteDate >= weekAgo;
+                        break;
+                    case 'month':
+                        show = noteDate.getMonth() === now.getMonth() && noteDate.getFullYear() === now.getFullYear();
+                        break;
+                    default:
+                        show = true;
+                }
+
+                note.style.display = show ? "" : "none";
+            });
+
+            // Update active filter button
+            document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Function to toggle dark mode
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.querySelector('.container').classList.toggle('dark-mode');
+            const darkModeEnabled = document.body.classList.contains('dark-mode');
+            document.getElementById('toggleDarkMode').innerText = darkModeEnabled ? '☀️' : '🌙';
+            saveDarkModePreference();
+        }
+
+        // Save dark mode preference to localStorage
+        function saveDarkModePreference() {
+            const darkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', darkMode);
+        }
+
+        // Load dark mode preference from localStorage
+        function loadDarkModePreference() {
+            const darkMode = JSON.parse(localStorage.getItem('darkMode'));
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                document.querySelector('.container').classList.add('dark-mode');
+                document.getElementById('toggleDarkMode').innerText = '☀️';
+            } else {
+                document.getElementById('toggleDarkMode').innerText = '🌙';
+            }
+        }
+
+        // Call loadDarkModePreference when the page loads
+        window.onload = function () {
+            loadNotes();
+            loadDarkModePreference();
+        };
+    </script>
+</body>
+</html>
