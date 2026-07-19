@@ -1,0 +1,2416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="color-scheme" content="light dark">
+    <!-- PWA -->
+    <meta name="theme-color" content="#5a53e8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Velvet">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <title>Velvet Notes</title>
+
+    <!-- Fully self-contained: inline SVG sprite, system fonts, crash-proof storage. -->
+
+    <style>
+        :root {
+            color-scheme: light;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.2);
+            --accent-shadow: rgba(99, 102, 241, 0.4);
+            --accent-shadow-hover: rgba(99, 102, 241, 0.5);
+            --danger: #dc2626;      /* audited: 4.83:1 on white */
+            --warning: #d97706;     /* audited: white icon 3.19:1 */
+            --success: #059669;     /* audited: white icon 3.77:1 */
+            --success-text: #046c50;/* audited: 6.43:1 on white, ≥5.27:1 on light pastels */
+            --nav-bg: rgba(255, 255, 255, 0.85);
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-serif: Georgia, "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+            --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            --spring: cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .dark-mode {
+            color-scheme: dark;
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --nav-bg: rgba(15, 23, 42, 0.85);
+            --border: #334155;
+            --danger: #f87171;      /* audited: 5.29:1 on dark card */
+            --success-text: #6ee7b7;/* audited: >8:1 on dark bg */
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        /* 5.3 — keyboard users get a visible ring; mouse users don't */
+        :focus { outline: none; }
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            margin: 0; padding: 0;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            padding-bottom: calc(90px + env(safe-area-inset-bottom));
+        }
+
+        .ic {
+            display: inline-block;
+            width: 1em; height: 1em;
+            fill: none; stroke: currentColor;
+            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+            vertical-align: -0.125em;
+            flex-shrink: 0;
+        }
+        .ic.fill { fill: currentColor; stroke: none; }
+        .fav-btn.active .ic { fill: currentColor; stroke: none; }
+
+        /* 4.6 — search match highlighting */
+        mark {
+            background: var(--accent-glow);
+            color: inherit;
+            border-radius: 4px;
+            padding: 0 2px;
+        }
+
+        /* --- Header --- */
+        header {
+            padding: calc(16px + env(safe-area-inset-top)) 20px 14px 20px;
+            position: sticky; top: 0; z-index: 50;
+            background: var(--bg-body);
+            transition: background 0.3s;
+        }
+        .header-content { display: flex; justify-content: space-between; align-items: center; max-width: 800px; margin: 0 auto; }
+        .header-actions { display: flex; gap: 6px; }
+        h1 { font-family: var(--font-serif); font-size: 28px; margin: 0; letter-spacing: -0.5px; }
+
+        .icon-btn {
+            background: none; border: none;
+            font-size: 20px; color: var(--text-primary);
+            cursor: pointer;
+            width: 44px; height: 44px; padding: 0;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        /* --- Search --- */
+        .search-wrapper { max-width: 800px; margin: 14px auto 0 auto; }
+        .search-box { position: relative; width: 100%; }
+        .search-box input {
+            width: 100%;
+            padding: 14px 20px 14px 45px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 16px;
+            font-family: var(--font-sans);
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .search-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .search-box .ic {
+            position: absolute; left: 16px; top: 50%;
+            transform: translateY(-50%);
+            width: 18px; height: 18px;
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        /* 4.5 — active tag filter pill */
+        .filter-pill {
+            max-width: 800px;
+            margin: 10px auto 0 auto;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-pill.show { display: flex; }
+        .filter-pill .pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--accent-glow);
+            color: var(--accent-strong);
+            border: none;
+            font-size: 13px; font-weight: 700;
+            font-family: var(--font-sans);
+            padding: 7px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            text-transform: capitalize;
+        }
+        .filter-pill .pill .ic { width: 12px; height: 12px; }
+
+        /* --- Layout --- */
+        .container { max-width: 800px; margin: 18px auto 0 auto; padding: 0 20px; }
+        .notes-grid { column-count: 2; column-gap: 16px; }
+
+        /* 4.10 — List view */
+        .list-view .notes-grid { column-count: 1; }
+        .list-view .container { max-width: 820px; }
+
+        .empty-state { column-span: all; text-align: center; padding: 56px 20px; color: var(--text-secondary); }
+        .empty-art { display: block; width: 190px; max-width: 70vw; height: auto; margin: 0 auto 20px auto; }
+        .empty-title { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0 0 6px 0; }
+        .empty-msg { margin: 0; font-size: 14px; }
+        .empty-cta {
+            margin-top: 20px; padding: 13px 26px; min-height: 44px;
+            border: none; border-radius: 999px;
+            background: var(--accent); color: #fff;
+            font-size: 15px; font-weight: 600; font-family: var(--font-sans);
+            cursor: pointer;
+            box-shadow: 0 6px 16px var(--accent-shadow);
+            transition: transform 0.25s var(--spring), box-shadow 0.25s;
+        }
+        .empty-cta:active { transform: scale(0.96); }
+
+        /* --- Card --- */
+        .card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 0;
+            box-shadow: var(--shadow-md);
+            display: flex; flex-direction: column;
+            transition: box-shadow 0.3s var(--spring), border-color 0.3s, transform 0.3s var(--spring);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            break-inside: avoid;
+            margin-bottom: 16px;
+            opacity: 0;
+            animation: fadeIn 0.45s var(--spring) forwards;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .card:active { transform: scale(0.98); }
+
+        .card-inner {
+            flex: 1;
+            display: flex; flex-direction: column; gap: 10px;
+            padding: 20px;
+            background: inherit;
+            border-radius: 20px;
+            position: relative; z-index: 1;
+            touch-action: pan-y;
+            transition: transform 0.25s ease;
+            user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+        }
+
+        .swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; z-index: 0; }
+        .swipe-btn {
+            width: 64px; border: none; color: #fff; font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: filter 0.2s;
+        }
+        .swipe-btn:active { filter: brightness(0.9); }
+        .swipe-btn.arc { background: var(--warning); }
+        .swipe-btn.rst { background: var(--success); }
+        .swipe-btn.del { background: var(--danger); border-top-right-radius: 20px; border-bottom-right-radius: 20px; }
+
+        .card[data-color="default"] { background: var(--bg-card); }
+        .card[data-color="rose"] { background: #ffe4e6; border-color: #fecdd3; color: #881337; }
+        .card[data-color="blue"] { background: #dbeafe; border-color: #bfdbfe; color: #1e3a8a; }
+        .card[data-color="green"] { background: #dcfce7; border-color: #bbf7d0; color: #14532d; }
+        .card[data-color="yellow"] { background: #fef9c3; border-color: #fde047; color: #713f12; }
+
+        .dark-mode .card[data-color="rose"]   { background: #5b2b35; border-color: #7c3d4a; color: #ffdee5; }
+        .dark-mode .card[data-color="blue"]   { background: #2d3d61; border-color: #46608f; color: #dbe7ff; }
+        .dark-mode .card[data-color="green"]  { background: #264737; border-color: #38614c; color: #d8f6e5; }
+        .dark-mode .card[data-color="yellow"] { background: #4a3f22; border-color: #6a5a32; color: #fbf1c2; }
+
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .card-date {
+            font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            opacity: 0.85; /* audited: worst-case 5.51:1 across all pastel variants */
+            display: flex; align-items: center; gap: 6px;
+        }
+        .card-date .ic { width: 11px; height: 11px; opacity: 0.9; }
+        .card-date .ic.bell { width: 11px; height: 11px; color: var(--accent); opacity: 1; }
+
+        .fav-btn {
+            background: none; border: none;
+            font-size: 16px; cursor: pointer;
+            color: var(--text-secondary); /* audited: ≥3.9:1 on every card bg (was 1.2:1 at #cbd5e1) */
+            transition: color 0.2s, transform 0.2s;
+            width: 44px; height: 44px; margin: -14px;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .fav-btn.active { color: #ef4444; transform: scale(1.1); }
+        .fav-btn .ic { width: 17px; height: 17px; }
+
+        .card-title { font-family: var(--font-serif); font-size: 17px; font-weight: 700; line-height: 1.35; letter-spacing: -0.2px; word-break: break-word; }
+        .card-body {
+            font-size: 14.5px; line-height: 1.5;
+            max-height: 150px; overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 6;
+            -webkit-box-orient: vertical;
+        }
+
+        /* 4.7 — checklist rendering on cards */
+        .cl-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            width: 100%;
+            border: none; background: none;
+            padding: 3px 0;
+            font-size: 14.5px; line-height: 1.45;
+            font-family: var(--font-sans);
+            color: inherit; text-align: left;
+            cursor: pointer;
+        }
+        .cl-item .ic { width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; opacity: 0.75; }
+        .cl-item.done .ic { color: var(--success-text); opacity: 1; }
+        .cl-item.done .cl-text { text-decoration: line-through; opacity: 0.5; }
+        .cl-more { font-size: 12px; opacity: 0.6; padding: 2px 0 0 27px; }
+
+        .progress { height: 4px; border-radius: 2px; background: rgba(0,0,0,0.08); overflow: hidden; }
+        .dark-mode .progress { background: rgba(255,255,255,0.1); }
+        .progress > div { height: 100%; background: var(--success); border-radius: 2px; transition: width 0.3s var(--spring); }
+
+        /* 4.5 — tag chips (tappable) */
+        .card-tags { margin-top: auto; padding-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag {
+            display: inline-block;
+            font-size: 11px; font-weight: 600;
+            font-family: var(--font-sans);
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: none;
+            background: rgba(0,0,0,0.05);
+            color: inherit;
+            cursor: pointer;
+            text-transform: capitalize;
+        }
+        .dark-mode .tag { background: rgba(255,255,255,0.08); }
+
+        /* --- FAB --- */
+        .fab {
+            position: fixed;
+            bottom: calc(100px + env(safe-area-inset-bottom));
+            right: calc(20px + env(safe-area-inset-right));
+            width: 60px; height: 60px;
+            border-radius: 20px;
+            background: var(--accent); color: white;
+            border: none;
+            box-shadow: 0 8px 20px var(--accent-shadow);
+            font-size: 24px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: transform 0.3s var(--spring), box-shadow 0.3s, background 0.3s;
+            z-index: 90;
+        }
+        .fab .ic { width: 24px; height: 24px; }
+        .fab:active { transform: scale(0.95); }
+
+        /* --- Bottom Nav --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0;
+            width: 100%;
+            height: calc(80px + env(safe-area-inset-bottom));
+            background: var(--nav-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border);
+            display: flex; justify-content: space-around; align-items: center;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 4px;
+            background: none; border: none;
+            color: var(--text-secondary);
+            font-size: 12px; font-weight: 500; font-family: var(--font-sans);
+            cursor: pointer;
+            width: 64px; min-height: 44px;
+            border-radius: 16px; padding: 6px 0;
+            transition: color 0.2s, background 0.2s;
+        }
+        .nav-item .ic { width: 20px; height: 20px; margin-bottom: 2px; transition: transform 0.2s; }
+        .nav-item.active { color: var(--accent-strong); }
+        .nav-item.active .ic { transform: translateY(-2px); }
+
+        /* --- Editor --- */
+        .modal {
+            position: fixed; inset: 0;
+            background: var(--bg-body);
+            z-index: 200;
+            display: flex; flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.38s var(--spring);
+            will-change: transform;
+        }
+        .modal.open { transform: translateY(0); }
+        .modal-backdrop { display: none; }
+
+        .modal-header {
+            padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-body);
+            touch-action: none;
+        }
+        .btn-text {
+            background: none; border: none;
+            font-size: 16px; font-weight: 600; font-family: var(--font-sans);
+            cursor: pointer;
+            padding: 10px 12px; margin: -10px -12px;
+        }
+        .btn-cancel { color: var(--text-secondary); }
+        .btn-save { color: var(--accent); }
+
+        #saveStatus { font-weight: 600; font-size: 13px; color: var(--text-secondary); opacity: 0; transition: opacity 0.25s; }
+        #saveStatus.saved { color: var(--success-text); }
+
+        .editor-content {
+            flex: 1; padding: 20px;
+            overflow-y: auto;
+            display: flex; flex-direction: column; gap: 16px;
+        }
+
+        .input-title {
+            width: 100%; border: none; background: transparent;
+            font-size: 26px; font-weight: 700;
+            color: var(--text-primary);
+            font-family: var(--font-serif);
+        }
+
+        /* 4.5 — tag chip picker */
+        .tag-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag-chip {
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 13px; font-weight: 600; font-family: var(--font-sans);
+            cursor: pointer;
+            text-transform: capitalize;
+            transition: all 0.2s;
+        }
+        .tag-chip.on {
+            background: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent-strong); /* audited: ≥4.86:1 on accent tint */
+        }
+
+        .input-body {
+            width: 100%; flex: 1;
+            border: none; background: transparent;
+            font-size: 17px; line-height: 1.6;
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            resize: none;
+        }
+
+        /* 4.9 — word count + relative time */
+        .editor-meta {
+            align-self: flex-end;
+            font-size: 12px;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        .editor-tools {
+            padding: 15px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-card);
+            display: flex; flex-wrap: wrap;
+            gap: 15px; row-gap: 12px;
+            align-items: center;
+            padding-bottom: calc(15px + env(safe-area-inset-bottom));
+            transition: transform 0.12s ease-out;
+        }
+        .tools-break { flex-basis: 100%; height: 0; }
+
+        .tool-btn {
+            width: 40px; height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: none;
+            color: var(--text-secondary);
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tool-btn .ic { width: 18px; height: 18px; }
+        .tool-btn.on { color: var(--accent); border-color: var(--accent); background: var(--accent-glow); }
+        .tool-btn:active { transform: scale(0.92); }
+
+        .color-dot {
+            width: 28px; height: 28px; border-radius: 50%;
+            cursor: pointer; border: 2px solid transparent;
+            position: relative; flex-shrink: 0;
+        }
+        .color-dot::before { content: ''; position: absolute; inset: -8px; border-radius: 50%; }
+        .color-dot.selected::after {
+            content: '';
+            position: absolute; top: 50%; left: 50%;
+            width: 10px; height: 6px;
+            border-left: 2.5px solid rgba(0, 0, 0, 0.55);
+            border-bottom: 2.5px solid rgba(0, 0, 0, 0.55);
+            transform: translate(-50%, -65%) rotate(-45deg);
+        }
+
+        /* --- Sheets --- */
+        .sheet-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            display: flex; align-items: flex-end; justify-content: center;
+            padding: 12px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 300;
+        }
+        .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+        #confirmOverlay { z-index: 320; }
+        #reminderOverlay { z-index: 310; }
+        #shortcutsOverlay { z-index: 305; }
+
+        .action-sheet {
+            width: 100%; max-width: 420px;
+            max-height: 86vh;
+            overflow-y: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 8px 10px;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            transform: translateY(calc(100% + 24px));
+            transition: transform 0.34s var(--spring);
+            box-shadow: var(--shadow-lg);
+        }
+        .sheet-overlay.open .action-sheet { transform: translateY(0); }
+
+        .sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--text-secondary); opacity: 0.35; margin: 6px auto 10px auto; }
+
+        .sheet-btn {
+            display: flex; align-items: center; gap: 14px;
+            width: 100%; min-height: 48px;
+            padding: 12px 14px;
+            border: none; border-radius: 14px;
+            background: none;
+            color: var(--text-primary);
+            font-size: 15px; font-weight: 500; font-family: var(--font-sans);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .sheet-btn:active { background: var(--border); }
+        .sheet-btn .ic { width: 20px; height: 20px; color: var(--text-secondary); }
+        .sheet-btn.danger { color: var(--danger); }
+        .sheet-btn.danger .ic { color: var(--danger); }
+        .sort-btn .ic { opacity: 0; }
+        .sort-btn.on .ic { opacity: 1; color: var(--accent); }
+
+        .sheet-section { padding: 12px 14px 4px 14px; }
+        .sheet-colors { display: flex; gap: 16px; align-items: center; padding: 12px 14px; }
+        .sheet-label {
+            font-size: 13px; font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.5px;
+            margin-right: auto;
+        }
+
+        .confirm-title { text-align: center; font-size: 16px; font-weight: 700; padding: 8px 14px 2px 14px; }
+        .confirm-sub { text-align: center; font-size: 13px; color: var(--text-secondary); padding: 0 14px 12px 14px; }
+
+        .dt-input {
+            width: 100%;
+            padding: 13px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--bg-body);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: var(--font-sans);
+        }
+        .dt-input:focus { border-color: var(--accent); }
+
+        /* 4.11 — shortcut cheat-sheet */
+        .sc-list { padding: 6px 10px 10px 10px; }
+        .sc-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; font-size: 14px; color: var(--text-secondary); }
+        .sc-row kbd {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-bottom-width: 2px;
+            border-radius: 6px;
+            padding: 3px 8px;
+            color: var(--text-primary);
+        }
+
+        .storage-badge {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding: 10px 0 4px 0;
+            opacity: 0.8;
+        }
+
+        /* --- Toast --- */
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(100px + env(safe-area-inset-bottom));
+            transform: translateX(-50%) translateY(12px);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            border-radius: 999px;
+            padding: 8px 10px 8px 20px;
+            display: flex; gap: 14px; align-items: center;
+            font-size: 14px; font-weight: 500;
+            white-space: nowrap;
+            max-width: calc(100vw - 32px);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s var(--spring), transform 0.3s var(--spring);
+            z-index: 400;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+        .toast button {
+            background: var(--accent-glow); border: none;
+            color: var(--accent-strong);
+            font-weight: 700; font-size: 13px; font-family: var(--font-sans);
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 999px;
+        }
+
+        /* ======= RESPONSIVE ======= */
+        @media (max-width: 379px) {
+            .notes-grid { column-count: 1; }
+            h1 { font-size: 23px; }
+            header { padding: calc(12px + env(safe-area-inset-top)) 16px 12px 16px; }
+            .container { padding-left: 16px; padding-right: 16px; }
+            .card-inner { padding: 16px; }
+            .fab { width: 52px; height: 52px; border-radius: 16px; }
+            .fab .ic { width: 20px; height: 20px; }
+        }
+
+        @media (min-width: 600px) {
+            .notes-grid { column-count: 3; column-gap: 24px; }
+            .card { margin-bottom: 24px; }
+            .container { max-width: 960px; }
+            .header-content, .search-wrapper, .filter-pill { max-width: 960px; }
+        }
+
+        @media (min-width: 1024px) {
+            .notes-grid { column-count: 4; }
+            .container { max-width: 1200px; }
+            .header-content, .search-wrapper, .filter-pill { max-width: 1200px; }
+            .list-view .container { max-width: 820px; }
+
+            body { padding-bottom: 0; padding-left: 88px; }
+            .bottom-nav {
+                top: 0; bottom: auto;
+                width: 88px; height: 100vh;
+                flex-direction: column; justify-content: flex-start; gap: 10px;
+                padding-top: calc(24px + env(safe-area-inset-top));
+                padding-bottom: 0;
+                border-top: none;
+                border-right: 1px solid var(--border);
+            }
+            .nav-item.active { background: var(--accent-glow); }
+            .fab { bottom: 32px; right: 32px; }
+            .toast { bottom: 32px; left: calc(50% + 44px); }
+
+            .modal {
+                inset: 50% auto auto 50%;
+                width: min(640px, 92vw);
+                height: min(80vh, 720px);
+                border-radius: 24px;
+                border: 1px solid var(--border);
+                box-shadow: var(--shadow-lg);
+                overflow: hidden;
+                transform: translate(-50%, 120vh);
+            }
+            .modal.open { transform: translate(-50%, -50%); }
+
+            .modal-backdrop {
+                display: block;
+                position: fixed; inset: 0;
+                background: rgba(15, 23, 42, 0.5);
+                backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
+                opacity: 0; pointer-events: none;
+                transition: opacity 0.38s ease;
+                z-index: 190;
+            }
+            .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+
+            .sheet-overlay { align-items: center; }
+            .action-sheet { transform: translateY(12px) scale(0.96); }
+            .sheet-overlay.open .action-sheet { transform: none; }
+        }
+
+        @media (min-width: 1440px) {
+            .notes-grid { column-count: 5; }
+            .container { max-width: 1400px; }
+            .header-content, .search-wrapper, .filter-pill { max-width: 1400px; }
+        }
+
+        @media (orientation: landscape) and (max-height: 480px) {
+            .notes-grid { column-count: 2; }
+            header { padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: 8px; }
+            h1 { font-size: 20px; }
+            .search-wrapper { margin-top: 8px; }
+            .search-box input { padding: 10px 16px 10px 40px; }
+            .container { margin-top: 10px; }
+            .empty-state { padding: 24px 20px; }
+            .empty-art { width: 120px; margin-bottom: 10px; }
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--accent); }
+            .icon-btn:hover { background: var(--border); }
+            .fav-btn:hover { color: #ef4444; }
+            .fab:hover { transform: translateY(-3px); box-shadow: 0 12px 24px var(--accent-shadow-hover); }
+            .sheet-btn:hover { background: var(--border); }
+            .empty-cta:hover { box-shadow: 0 10px 22px var(--accent-shadow-hover); transform: translateY(-2px); }
+            .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-delay: 0ms !important;
+                transition-duration: 0.01ms !important;
+            }
+            .card { opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Inline SVG icon sprite -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+        <symbol id="i-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+        <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></symbol>
+        <symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+        <symbol id="i-box" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></symbol>
+        <symbol id="i-box-open" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9.5 14 12 11.5 14.5 14"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1.2 6.5L17 13.5v2.5H7v-2.5l3.2-3z"/><line x1="12" y1="16" x2="12" y2="21"/></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></symbol>
+        <symbol id="i-feather" viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></symbol>
+        <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 8 12 3 17 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+        <symbol id="i-restore" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+        <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+        <symbol id="i-square" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></symbol>
+        <symbol id="i-check-square" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline points="9 12 11 14 15 10"/></symbol>
+        <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="0.8"/><circle cx="4" cy="12" r="0.8"/><circle cx="4" cy="18" r="0.8"/></symbol>
+        <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+    </svg>
+
+    <header>
+        <div class="header-content">
+            <h1 id="pageTitle">My Notes</h1>
+            <div class="header-actions">
+                <button class="icon-btn" id="menuBtn" onclick="openMenu()" aria-label="Menu">
+                    <svg class="ic"><use href="#i-dots"/></svg>
+                </button>
+                <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <svg class="ic" id="themeIcon"><use href="#i-moon"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="search-wrapper">
+            <div class="search-box">
+                <svg class="ic"><use href="#i-search"/></svg>
+                <input type="text" id="searchInput" placeholder="Search notes..." aria-label="Search notes" oninput="filterNotes()">
+            </div>
+        </div>
+        <!-- 4.5 — active tag filter pill -->
+        <div class="filter-pill" id="filterPill">
+            <button class="pill" onclick="clearTagFilter()">
+                <span id="filterPillLabel"></span>
+                <svg class="ic"><use href="#i-x"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="notes-grid" id="notesGrid"></div>
+    </main>
+
+    <button class="fab" onclick="haptic(); openEditor()" aria-label="New note">
+        <svg class="ic"><use href="#i-plus"/></svg>
+    </button>
+
+    <nav class="bottom-nav">
+        <button class="nav-item active" aria-current="page" onclick="switchTab('all', this)">
+            <svg class="ic"><use href="#i-layers"/></svg><span>All</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('favorites', this)">
+            <svg class="ic"><use href="#i-heart"/></svg><span>Favorites</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('work', this)">
+            <svg class="ic"><use href="#i-briefcase"/></svg><span>Work</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('personal', this)">
+            <svg class="ic"><use href="#i-user"/></svg><span>Personal</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('archive', this)">
+            <svg class="ic"><use href="#i-box"/></svg><span>Archive</span>
+        </button>
+    </nav>
+
+    <div class="modal-backdrop" id="modalBackdrop" onclick="finishEditor(false)"></div>
+
+    <!-- 5.2 — proper dialog semantics -->
+    <div class="modal" id="editorModal" role="dialog" aria-modal="true" aria-label="Note editor">
+        <div class="modal-header">
+            <button class="btn-text btn-cancel" onclick="discardEditor()">Cancel</button>
+            <span id="saveStatus"></span>
+            <button class="btn-text btn-save" onclick="saveNote()">Done</button>
+        </div>
+        <div class="editor-content">
+            <input type="text" class="input-title" id="noteTitle" placeholder="Title" aria-label="Note title">
+            <!-- 4.5 — multi-tag chip picker (replaces dropdown) -->
+            <div class="tag-picker" id="tagPicker"></div>
+            <textarea class="input-body" id="noteText" placeholder="Start writing here..." aria-label="Note body"></textarea>
+            <!-- 4.9 — word count + relative time -->
+            <div class="editor-meta" id="editorMeta"></div>
+        </div>
+        <div class="editor-tools">
+            <div class="color-dot selected" style="background: #f1f5f9; border: 1px solid #cbd5e1;" data-value="default" onclick="selectColor(this)" role="button" tabindex="0" aria-label="Note color: default" aria-pressed="true"></div>
+            <div class="color-dot" style="background: #fecdd3;" data-value="rose" onclick="selectColor(this)" role="button" tabindex="0" aria-label="Note color: rose" aria-pressed="false"></div>
+            <div class="color-dot" style="background: #bfdbfe;" data-value="blue" onclick="selectColor(this)" role="button" tabindex="0" aria-label="Note color: blue" aria-pressed="false"></div>
+            <div class="color-dot" style="background: #bbf7d0;" data-value="green" onclick="selectColor(this)" role="button" tabindex="0" aria-label="Note color: green" aria-pressed="false"></div>
+            <div class="color-dot" style="background: #fde047;" data-value="yellow" onclick="selectColor(this)" role="button" tabindex="0" aria-label="Note color: yellow" aria-pressed="false"></div>
+
+            <span class="tools-break"></span>
+
+            <!-- 4.7 checklist · 4.8 reminder -->
+            <button class="tool-btn" id="checklistBtn" onclick="toggleChecklistMode()" title="Checklist" aria-label="Toggle checklist" aria-pressed="false">
+                <svg class="ic"><use href="#i-check-square"/></svg>
+            </button>
+            <button class="tool-btn" id="reminderBtn" onclick="openReminderSheet()" title="Reminder" aria-label="Set reminder" aria-pressed="false">
+                <svg class="ic"><use href="#i-bell"/></svg>
+            </button>
+
+            <div style="margin-left: auto;">
+                 <button class="btn-text" id="deleteBtn" style="color: var(--danger); display: none;" onclick="deleteCurrentNote()" aria-label="Move to Trash">
+                    <svg class="ic"><use href="#i-trash"/></svg>
+                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Long-press Action Sheet -->
+    <div class="sheet-overlay" id="sheetOverlay">
+        <div class="action-sheet" role="dialog" aria-modal="true" aria-label="Note actions">
+            <div class="sheet-handle"></div>
+            <div id="sheetNormal">
+                <button class="sheet-btn" id="sheetPinBtn" onclick="sheetTogglePin()"></button>
+                <button class="sheet-btn" id="sheetFavBtn" onclick="sheetToggleFav()"></button>
+                <div class="sheet-colors">
+                    <span class="sheet-label">Color</span>
+                    <span id="sheetDots" style="display: contents;"></span>
+                </div>
+                <button class="sheet-btn" onclick="sheetShare()">
+                    <svg class="ic"><use href="#i-share"/></svg><span>Share</span>
+                </button>
+                <button class="sheet-btn danger" onclick="sheetDelete()">
+                    <svg class="ic"><use href="#i-trash"/></svg><span>Move to Trash</span>
+                </button>
+            </div>
+            <div id="sheetTrash" style="display: none;">
+                <button class="sheet-btn" onclick="sheetRestore()">
+                    <svg class="ic"><use href="#i-restore"/></svg><span>Restore note</span>
+                </button>
+                <button class="sheet-btn danger" onclick="sheetForever()">
+                    <svg class="ic"><use href="#i-trash"/></svg><span>Delete forever</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm sheet (delete forever only) -->
+    <div class="sheet-overlay" id="confirmOverlay">
+        <div class="action-sheet" role="dialog" aria-modal="true" aria-label="Confirm permanent deletion">
+            <div class="sheet-handle"></div>
+            <div class="confirm-title" id="confirmTitle">Delete forever?</div>
+            <div class="confirm-sub" id="confirmSub">This note will be permanently deleted.</div>
+            <button class="sheet-btn danger" onclick="confirmDeleteYes()">
+                <svg class="ic"><use href="#i-trash"/></svg><span>Delete forever</span>
+            </button>
+            <button class="sheet-btn" onclick="closeConfirm()">
+                <svg class="ic"><use href="#i-plus" style="transform: rotate(45deg); display: inline-block;"/></svg><span>Cancel</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 4.8 — Reminder sheet -->
+    <div class="sheet-overlay" id="reminderOverlay">
+        <div class="action-sheet" role="dialog" aria-modal="true" aria-label="Set a reminder">
+            <div class="sheet-handle"></div>
+            <div class="confirm-title">Remind me</div>
+            <div class="confirm-sub">You'll be notified while the app is open.</div>
+            <div style="padding: 4px 14px 10px 14px;">
+                <input type="datetime-local" id="reminderInput" class="dt-input" aria-label="Reminder date and time">
+            </div>
+            <button class="sheet-btn" onclick="setReminder()">
+                <svg class="ic"><use href="#i-bell"/></svg><span>Set reminder</span>
+            </button>
+            <button class="sheet-btn danger" onclick="clearReminder()">
+                <svg class="ic"><use href="#i-x"/></svg><span>Clear reminder</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 4.11 — Shortcuts cheat-sheet -->
+    <div class="sheet-overlay" id="shortcutsOverlay">
+        <div class="action-sheet" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+            <div class="sheet-handle"></div>
+            <div class="confirm-title">Keyboard shortcuts</div>
+            <div class="sc-list">
+                <div class="sc-row"><span>Focus search</span><kbd>/</kbd></div>
+                <div class="sc-row"><span>New note</span><kbd>N</kbd></div>
+                <div class="sc-row"><span>Save note (in editor)</span><kbd>Ctrl / ⌘ + Enter</kbd></div>
+                <div class="sc-row"><span>Close dialog</span><kbd>Esc</kbd></div>
+                <div class="sc-row"><span>This cheat-sheet</span><kbd>?</kbd></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header menu -->
+    <div class="sheet-overlay" id="menuOverlay">
+        <div class="action-sheet" role="dialog" aria-modal="true" aria-label="App menu">
+            <div class="sheet-handle"></div>
+            <div class="sheet-colors">
+                <span class="sheet-label">Accent</span>
+                <span id="accentDots" style="display: contents;"></span>
+            </div>
+
+            <!-- 4.10 — sort options -->
+            <div class="sheet-section sheet-label">Sort</div>
+            <button class="sheet-btn sort-btn" data-sort="newest" onclick="setSort('newest')">
+                <svg class="ic"><use href="#i-check"/></svg><span>Newest first</span>
+            </button>
+            <button class="sheet-btn sort-btn" data-sort="oldest" onclick="setSort('oldest')">
+                <svg class="ic"><use href="#i-check"/></svg><span>Oldest first</span>
+            </button>
+            <button class="sheet-btn sort-btn" data-sort="alpha" onclick="setSort('alpha')">
+                <svg class="ic"><use href="#i-check"/></svg><span>Title A–Z</span>
+            </button>
+            <button class="sheet-btn sort-btn" data-sort="color" onclick="setSort('color')">
+                <svg class="ic"><use href="#i-check"/></svg><span>By color</span>
+            </button>
+
+            <div class="sheet-section sheet-label">More</div>
+            <button class="sheet-btn" id="viewBtn" onclick="toggleView()">
+                <svg class="ic"><use href="#i-list"/></svg><span id="viewBtnLabel">List view</span>
+            </button>
+            <button class="sheet-btn" onclick="menuExport()">
+                <svg class="ic"><use href="#i-download"/></svg><span>Export backup (.json)</span>
+            </button>
+            <button class="sheet-btn" onclick="menuImport()">
+                <svg class="ic"><use href="#i-upload"/></svg><span>Import backup</span>
+            </button>
+            <button class="sheet-btn" onclick="menuTrash()">
+                <svg class="ic"><use href="#i-trash"/></svg><span>Trash</span>
+            </button>
+            <div class="storage-badge" id="storageBadge">Checking storage…</div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true">
+        <span id="toastMsg"></span>
+        <button id="toastAction" style="display:none;">Undo</button>
+    </div>
+
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="handleImportFile(event)">
+
+    <script>
+        // ============ Crash-proof storage ============
+        const store = {
+            available: (() => { try { localStorage.setItem('__probe', '1'); localStorage.removeItem('__probe'); return true; } catch (e) { return false; } })(),
+            memory: {},
+            get(key) {
+                try { return this.available ? localStorage.getItem(key) : (this.memory[key] ?? null); }
+                catch (e) { return this.memory[key] ?? null; }
+            },
+            set(key, value) {
+                try { if (this.available) { localStorage.setItem(key, value); return true; } } catch (e) {}
+                this.memory[key] = value;
+                return false;
+            },
+            remove(key) {
+                try { if (this.available) localStorage.removeItem(key); } catch (e) {}
+                delete this.memory[key];
+            }
+        };
+
+        // ============ 6.2 IndexedDB — primary durable store ============
+        // Promise-based, fully self-guarding: every failure path resolves to
+        // null/false so the app silently keeps working on the localStorage
+        // shadow (which every write is mirrored to) — e.g. in sandboxed
+        // iframe previews where indexedDB.open() throws.
+        const db = (() => {
+            let _promise = null, _ok = false;
+
+            function open() {
+                return new Promise((resolve) => {
+                    if (!('indexedDB' in window)) return resolve(false);
+                    let req;
+                    try { req = indexedDB.open('velvet-notes-db', 1); }
+                    catch (e) { return resolve(false); }
+                    req.onupgradeneeded = () => {
+                        try { req.result.createObjectStore('kv'); } catch (e) {}
+                    };
+                    req.onsuccess = () => { _ok = true; resolve(req.result); };
+                    req.onerror = () => resolve(false);
+                    req.onblocked = () => resolve(false);
+                });
+            }
+            function ensure() {
+                if (!_promise) _promise = open();
+                return _promise;
+            }
+            async function withStore(mode, fn) {
+                try {
+                    const d = await ensure();
+                    if (!d) return null;
+                    return await new Promise((resolve) => {
+                        try {
+                            const tx = d.transaction('kv', mode);
+                            const s = tx.objectStore('kv');
+                            const req = fn(s);
+                            if (req && typeof req.onsuccess !== 'undefined') {
+                                req.onsuccess = () => resolve(req.result === undefined ? true : req.result);
+                                req.onerror = () => resolve(null);
+                            } else {
+                                tx.oncomplete = () => resolve(true);
+                                tx.onerror = () => resolve(null);
+                            }
+                        } catch (e) { resolve(null); }
+                    });
+                } catch (e) { return null; }
+            }
+            return {
+                get available() { return _ok; },
+                get(key) { return withStore('readonly', (s) => s.get(key)); },
+                set(key, val) { return withStore('readwrite', (s) => s.put(val, key)); }
+            };
+        })();
+
+        // ============ 4.12 Unique IDs ============
+        function uid() {
+            if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+            return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+        }
+
+        // ============ Constants ============
+        const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+        const TAGS = ['work', 'personal', 'ideas', 'shopping', 'travel'];
+        const COLOR_ORDER = { rose: 0, blue: 1, green: 2, yellow: 3, default: 4 };
+
+        // ============ Migration (4.5 — tags: [] model) ============
+        function migrateNote(n) {
+            // v3→v4: combined "Title / Tag" → title + tag
+            if (n.title === undefined) {
+                const oldTag = n.tag || '';
+                let tag = 'General';
+                if (/work/i.test(oldTag)) tag = 'Work';
+                else if (/personal/i.test(oldTag)) tag = 'Personal';
+                else if (/idea/i.test(oldTag)) tag = 'Ideas';
+                n = { ...n, title: oldTag || 'Untitled', tag };
+            }
+            // v5→v6: single tag → tags array
+            if (!Array.isArray(n.tags)) {
+                n.tags = (n.tag && n.tag !== 'General') ? [String(n.tag).toLowerCase()] : [];
+            }
+            n.tags = n.tags.filter(t => TAGS.includes(String(t).toLowerCase())).map(t => String(t).toLowerCase());
+            return n;
+        }
+
+        // ============ Data & State ============
+        function loadNotesFrom(raw) {
+            let arr = [];
+            try { arr = JSON.parse(raw) || []; } catch (e) { arr = []; }
+            if (!Array.isArray(arr)) arr = [];
+            arr = arr.map(migrateNote);
+            const now = Date.now();
+            // 4.2 — auto-purge trashed notes older than 30 days
+            return arr.filter(n => !(n.isTrashed && n.deletedAt && (now - new Date(n.deletedAt).getTime()) > THIRTY_DAYS));
+        }
+
+        // Fast boot from the synchronous localStorage shadow…
+        let notes = loadNotesFrom(store.get('velvet_notes'));
+
+        let currentTab = 'all';
+        let tagFilter = null;              // 4.5 — tap-to-filter
+        let sortBy = store.get('velvet_sort') || 'newest';   // 4.10
+        let viewMode = store.get('velvet_view') || 'masonry'; // 4.10
+        let editingId = null;
+        let sheetNoteId = null;
+        let pendingDeleteId = null;
+        let editorSnapshot = null;
+        let selectedTags = [];
+        let draftRecovered = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            recoverDraft();
+            loadTheme();
+            applyAccent(store.get('velvet_accent') || 'indigo');
+            applyView();
+            saveToStorage();
+            renderNotes();
+            initAutoSave();
+            initModalPullToDismiss();
+            initSwipeDismissal();
+            initKeyboardToolbar();
+            initOverlayDismissal();
+            initKeyboardShortcuts();   // 4.11 (includes Esc chain)
+            initReminderEngine();      // 4.8
+            initDotKeys();             // 5.1 — Enter/Space activates color dots
+            renderAccentDots();
+            renderMenuState();
+            a11yIcons();               // mark all decorative icons
+            initIndexedDbMigration();  // 6.2 — …then adopt the durable IndexedDB copy
+            initPWA();                 // 6.1 — register the service worker
+            if (draftRecovered) setTimeout(() => showToast('Unsaved draft recovered ✓'), 600);
+        });
+
+        // 6.2 — IndexedDB is the source of truth; localStorage stays a shadow.
+        async function initIndexedDbMigration() {
+            const badge = document.getElementById('storageBadge');
+            const raw = await db.get('velvet_notes');
+            const shadow = store.get('velvet_notes');
+
+            if (db.available) {
+                if (typeof raw === 'string' && raw !== shadow) {
+                    // Fresh data lives in IndexedDB — adopt it and re-sync the shadow
+                    notes = loadNotesFrom(raw);
+                    saveToStorage();
+                    renderNotes();
+                    showToast('Notes synced from local database ✓', { duration: 2500 });
+                } else if (raw === null || raw === undefined) {
+                    // First run on IndexedDB — seed it from whatever the shadow has
+                    await db.set('velvet_notes', JSON.stringify(notes));
+                }
+                if (badge) badge.textContent = 'Storage: IndexedDB ✓ · works offline';
+            } else if (badge) {
+                badge.textContent = store.available
+                    ? 'Storage: browser localStorage'
+                    : 'Storage: this session only (sandboxed)';
+            }
+        }
+
+        // 6.1 — Service worker registration (skipped gracefully on file://,
+        // sandboxed previews, or browsers without SW support).
+        function initPWA() {
+            if (!('serviceWorker' in navigator)) return;
+            const servable = location.protocol === 'https:' ||
+                             location.hostname === 'localhost' ||
+                             location.hostname === '127.0.0.1';
+            if (!servable) return;
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(() => console.info('[Velvet] service worker registered'))
+                    .catch(() => {});
+            });
+        }
+
+        function haptic(ms = 10) {
+            if (navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} }
+        }
+
+        // ============ 5.x Accessibility helpers ============
+
+        // All inline SVG icons are decorative (their hosts carry text/labels)
+        function a11yIcons() {
+            document.querySelectorAll('svg.ic:not([aria-hidden])').forEach(s => {
+                s.setAttribute('aria-hidden', 'true');
+                s.setAttribute('focusable', 'false');
+            });
+        }
+
+        // 5.2 — focus trap for the editor dialog
+        function trapEditorTab(e) {
+            const modal = document.getElementById('editorModal');
+            if (!modal.classList.contains('open')) return;
+            const focusables = [...modal.querySelectorAll('button, input, textarea, select, [tabindex="0"]')]
+                .filter(el => !el.disabled && el.offsetParent !== null);
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
+
+        // 5.2 — restore focus to the originating card (or its re-rendered twin) on close
+        let lastFocusEl = null;
+        function restoreFocusAfterEditor(origin, originNoteId) {
+            let target = null;
+            if (originNoteId) {
+                try { target = document.querySelector(`.card[data-note-id="${CSS.escape(String(originNoteId))}"]`); } catch (e) {}
+            }
+            if (!target && origin && document.contains(origin)) target = origin;
+            if (!target) target = document.querySelector('.fab');
+            if (target && target.focus) target.focus({ preventScroll: true });
+        }
+
+        // Color dots are divs with role="button" — make Enter/Space activate them
+        function initDotKeys() {
+            document.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('color-dot')) {
+                    e.preventDefault();
+                    e.target.click();
+                }
+            });
+        }
+
+        // ============ Toast ============
+        let toastTimer = null;
+        function showToast(msg, opts = {}) {
+            const toastEl = document.getElementById('toast');
+            const msgEl = document.getElementById('toastMsg');
+            const actionBtn = document.getElementById('toastAction');
+            msgEl.textContent = msg;
+            if (opts.actionText && opts.onAction) {
+                actionBtn.textContent = opts.actionText;
+                actionBtn.style.display = '';
+                actionBtn.onclick = () => { hideToast(); opts.onAction(); };
+            } else {
+                actionBtn.style.display = 'none';
+                actionBtn.onclick = null;
+            }
+            toastEl.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(hideToast, opts.duration || 4200);
+        }
+        function hideToast() {
+            document.getElementById('toast').classList.remove('show');
+            clearTimeout(toastTimer);
+        }
+
+        // ============ Helpers ============
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text).replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+        }
+
+        // 4.6 — highlight matches inside already-escaped HTML
+        function highlightMatches(escapedHtml, rawQuery) {
+            if (!rawQuery) return escapedHtml;
+            const eq = escapeHtml(rawQuery.trim());
+            if (!eq) return escapedHtml;
+            const safe = eq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+                return escapedHtml.replace(new RegExp(`(${safe})`, 'gi'), '<mark>$1</mark>');
+            } catch (e) { return escapedHtml; }
+        }
+
+        // 4.7 — checklist detection/parsing
+        const CL_RE = /^- \[( |x)\] (.*)$/;
+        function isChecklistText(t) { return CL_RE.test(t || ''); }
+        function parseChecklist(t) {
+            const lines = String(t || '').split('\n');
+            const items = [];
+            lines.forEach((line, idx) => {
+                const m = line.match(CL_RE);
+                if (m) items.push({ line: idx, done: m[1] === 'x', text: m[2] });
+            });
+            return items;
+        }
+
+        // 4.9 — relative time
+        function relTime(dateStr) {
+            const diff = Date.now() - new Date(dateStr).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            if (hrs < 48) return 'Yesterday';
+            return formatDate(dateStr);
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function wordsOf(t) {
+            const w = String(t || '').trim();
+            return w ? w.split(/\s+/).length : 0;
+        }
+
+        // ============ Rendering ============
+
+        function emptyStateHTML(search) {
+            const art = `
+                <svg class="empty-art" viewBox="0 0 220 150" fill="none" aria-hidden="true">
+                    <circle cx="182" cy="30" r="15" fill="var(--accent)" opacity="0.14"/>
+                    <circle cx="38" cy="112" r="9" fill="var(--accent)" opacity="0.14"/>
+                    <rect x="62" y="16" width="92" height="66" rx="12" stroke="currentColor" stroke-opacity="0.22" stroke-width="2.5" transform="rotate(-7 108 49)"/>
+                    <rect x="68" y="32" width="92" height="66" rx="12" fill="var(--bg-card)" stroke="currentColor" stroke-opacity="0.42" stroke-width="2.5" transform="rotate(4 114 65)"/>
+                    <line x1="90" y1="56" x2="138" y2="56" stroke="currentColor" stroke-opacity="0.32" stroke-width="5" stroke-linecap="round" transform="rotate(4 114 65)"/>
+                    <line x1="88" y1="72" x2="128" y2="72" stroke="currentColor" stroke-opacity="0.24" stroke-width="5" stroke-linecap="round" transform="rotate(4 114 65)"/>
+                    <line x1="86" y1="88" x2="116" y2="88" stroke="currentColor" stroke-opacity="0.18" stroke-width="5" stroke-linecap="round" transform="rotate(4 114 65)"/>
+                    <g transform="translate(142 82) scale(1.5) rotate(8)" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                        <use href="#i-feather"/>
+                    </g>
+                </svg>`;
+
+            let title = 'No notes here yet';
+            let msg = 'Your thoughts deserve a beautiful home.';
+            let cta = false;
+
+            if (search) {
+                title = 'Nothing found';
+                msg = `No notes match "${escapeHtml(search)}".`;
+            } else if (tagFilter) {
+                title = `No notes tagged #${tagFilter}`;
+                msg = 'Tag a note to see it here.';
+            } else if (currentTab === 'trash') {
+                title = 'Trash is empty';
+                msg = 'Deleted notes rest here for 30 days.';
+            } else if (currentTab === 'archive') {
+                title = 'Nothing archived';
+                msg = 'Swipe a note left to archive it.';
+            } else if (currentTab === 'favorites') {
+                title = 'No favorites yet';
+                msg = 'Tap the heart on any note to pin it here.';
+            } else if (currentTab === 'all') {
+                cta = true;
+            }
+
+            return `
+                <div class="empty-state">
+                    ${art}
+                    <p class="empty-title">${title}</p>
+                    <p class="empty-msg">${msg}</p>
+                    ${cta ? `<button class="empty-cta" onclick="haptic(); openEditor()">Create your first note</button>` : ''}
+                </div>`;
+        }
+
+        // 4.10 — sorting
+        function comparator(a, b) {
+            switch (sortBy) {
+                case 'oldest': return new Date(a.date) - new Date(b.date);
+                case 'alpha': return (a.title || '').localeCompare(b.title || '');
+                case 'color': {
+                    const r = (COLOR_ORDER[a.color || 'default'] ?? 4) - (COLOR_ORDER[b.color || 'default'] ?? 4);
+                    return r !== 0 ? r : new Date(b.date) - new Date(a.date);
+                }
+                default: return new Date(b.date) - new Date(a.date);
+            }
+        }
+
+        function renderNotes() {
+            const grid = document.getElementById('notesGrid');
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            grid.innerHTML = '';
+
+            // Title reflects the active context
+            if (tagFilter) document.getElementById('pageTitle').innerText = '#' + tagFilter;
+
+            const filtered = notes.filter(note => {
+                if (currentTab === 'trash') {
+                    if (!note.isTrashed) return false;
+                } else if (note.isTrashed) {
+                    return false;
+                }
+
+                if (currentTab === 'archive') {
+                    if (!note.isArchived) return false;
+                } else if (note.isArchived) {
+                    return false;
+                }
+
+                // 4.5 — tag filter (real array match, not substring)
+                if (tagFilter && !(note.tags || []).includes(tagFilter)) return false;
+
+                const haystack = `${note.title || ''}\n${note.text || ''}\n${(note.tags || []).join(' ')}`.toLowerCase();
+                if (search && !haystack.includes(search)) return false;
+
+                if (currentTab === 'all' || currentTab === 'archive' || currentTab === 'trash') return true;
+                if (currentTab === 'favorites') return note.isFavorite;
+                // 4.5 — tabs match exact tags now: "Working out" titled notes no longer leak in
+                if (currentTab === 'work') return (note.tags || []).includes('work');
+                if (currentTab === 'personal') return (note.tags || []).includes('personal');
+                return true;
+            });
+
+            filtered.sort((a, b) => {
+                if (currentTab === 'trash') return new Date(b.deletedAt || b.date) - new Date(a.deletedAt || a.date);
+                if (!!a.isPinned !== !!b.isPinned) return a.isPinned ? -1 : 1;
+                // Favorites tier only applies to the default "Newest" order
+                if (sortBy === 'newest' && !!a.isFavorite !== !!b.isFavorite) return a.isFavorite ? -1 : 1;
+                return comparator(a, b);
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = emptyStateHTML(search);
+                return;
+            }
+
+            const inTrash = currentTab === 'trash';
+
+            filtered.forEach((note, idx) => {
+                const card = document.createElement('article');
+                card.className = 'card';
+                card.dataset.color = note.color || 'default';
+                card.dataset.noteId = note.id;
+                card.style.animationDelay = `${Math.min(idx, 8) * 40}ms`;
+                // Keyboard-operable card: focusable, labeled, Enter opens
+                card.tabIndex = 0;
+                card.setAttribute('role', 'button');
+                card.setAttribute('aria-label', `${note.isTrashed ? 'Trashed note' : 'Note'}: ${note.title || 'Untitled'}`);
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && e.target === card) { e.preventDefault(); card.click(); }
+                });
+
+                let lpTimer = null, lpFired = false;
+                const clearLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+
+                card.onclick = (e) => {
+                    if (lpFired) { lpFired = false; return; }
+                    if (e.target.closest('.fav-btn') || e.target.closest('.swipe-btn') ||
+                        e.target.closest('.cl-item') || e.target.closest('.tag')) return;
+                    if (card.classList.contains('swiped')) { closeSwipedCard(card); return; }
+                    if (inTrash) { openActionSheet(note.id); return; }
+                    openEditor(note.id);
+                };
+
+                card.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if (!lpFired) openActionSheet(note.id);
+                });
+
+                const actions = note.isTrashed
+                    ? `<button class="swipe-btn rst" onclick="restoreNote('${note.id}')" title="Restore" aria-label="Restore note"><svg class="ic"><use href="#i-restore"/></svg></button>
+                       <button class="swipe-btn del" onclick="deleteForever('${note.id}')" title="Delete forever" aria-label="Delete note forever"><svg class="ic"><use href="#i-trash"/></svg></button>`
+                    : `<button class="swipe-btn arc" onclick="toggleArchive('${note.id}')" title="${note.isArchived ? 'Unarchive' : 'Archive'}" aria-label="${note.isArchived ? 'Unarchive note' : 'Archive note'}"><svg class="ic"><use href="#${note.isArchived ? 'i-box-open' : 'i-box'}"/></svg></button>
+                       <button class="swipe-btn del" onclick="softDelete('${note.id}')" title="Move to Trash" aria-label="Move note to Trash"><svg class="ic"><use href="#i-trash"/></svg></button>`;
+
+                // Title & body with search highlighting (4.6)
+                const titleHTML = highlightMatches(escapeHtml(note.title || 'Untitled'), search);
+
+                let bodyHTML = '';
+                let progressHTML = '';
+                if (isChecklistText(note.text)) {
+                    // 4.7 — render as interactive checklist + progress bar
+                    const items = parseChecklist(note.text);
+                    const done = items.filter(i => i.done).length;
+                    const shown = items.slice(0, 5);
+                    bodyHTML = shown.map(i =>
+                        `<button class="cl-item ${i.done ? 'done' : ''}" onclick="toggleCheckItem('${note.id}', ${i.line}, event)" role="checkbox" aria-checked="${i.done}" aria-label="Toggle checklist item">
+                            <svg class="ic"><use href="#${i.done ? 'i-check-square' : 'i-square'}"/></svg>
+                            <span class="cl-text">${highlightMatches(escapeHtml(i.text), search)}</span>
+                        </button>`
+                    ).join('');
+                    if (items.length > 5) bodyHTML += `<div class="cl-more">+${items.length - 5} more item${items.length - 5 === 1 ? '' : 's'}</div>`;
+                    const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+                    progressHTML = `<div class="progress" title="${done}/${items.length} done"><div style="width:${pct}%"></div></div>`;
+                } else if (note.text) {
+                    bodyHTML = `<div class="card-body">${highlightMatches(escapeHtml(note.text), search)}</div>`;
+                }
+
+                const chips = note.tags || [];
+                const tagsHTML = chips.length
+                    ? `<div class="card-tags">${chips.slice(0, 3).map(t => `<button class="tag" onclick="filterByTag('${t}', event)">#${t}</button>`).join('')}${chips.length > 3 ? `<span class="tag">+${chips.length - 3}</span>` : ''}</div>`
+                    : '';
+
+                const bell = (note.reminderAt && !note.reminded)
+                    ? '<svg class="ic bell"><use href="#i-bell"/></svg>' : '';
+
+                card.innerHTML = `
+                    <div class="swipe-actions">${actions}</div>
+                    <div class="card-inner">
+                        <div class="card-header">
+                            <span class="card-date">${note.isPinned && !note.isTrashed ? '<svg class="ic"><use href="#i-pin"/></svg>' : ''}${bell}${formatDate(note.isTrashed && note.deletedAt ? note.deletedAt : note.date)}</span>
+                            ${note.isTrashed ? '' : `
+                            <button class="fav-btn ${note.isFavorite ? 'active' : ''}" onclick="toggleFavorite('${note.id}', this)" aria-label="Toggle favorite" aria-pressed="${note.isFavorite ? 'true' : 'false'}">
+                                <svg class="ic"><use href="#i-heart"/></svg>
+                            </button>`}
+                        </div>
+                        <div class="card-title">${titleHTML}</div>
+                        ${bodyHTML}
+                        ${progressHTML}
+                        ${tagsHTML}
+                    </div>
+                `;
+                grid.appendChild(card);
+                attachSwipe(card, note, {
+                    startLp: () => {
+                        clearLp();
+                        lpTimer = setTimeout(() => {
+                            lpTimer = null;
+                            lpFired = true;
+                            haptic(15);
+                            openActionSheet(note.id);
+                            setTimeout(() => { lpFired = false; }, 400);
+                        }, 500);
+                    },
+                    cancelLp: clearLp
+                });
+            });
+            a11yIcons();
+        }
+
+        // 4.5 — tap a chip to filter
+        function filterByTag(tag, e) {
+            if (e) e.stopPropagation();
+            currentTab = 'all';
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            tagFilter = tag;
+            renderFilterPill();
+            renderNotes();
+        }
+        function clearTagFilter() {
+            tagFilter = null;
+            renderFilterPill();
+            document.getElementById('pageTitle').innerText = 'My Notes';
+            renderNotes();
+        }
+        function renderFilterPill() {
+            const pill = document.getElementById('filterPill');
+            pill.classList.toggle('show', !!tagFilter);
+            if (tagFilter) document.getElementById('filterPillLabel').textContent = '#' + tagFilter;
+        }
+
+        // 4.7 — toggle a checklist item straight from the card
+        function toggleCheckItem(id, lineIdx, e) {
+            if (e) e.stopPropagation();
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            const lines = String(note.text).split('\n');
+            const m = lines[lineIdx] && lines[lineIdx].match(CL_RE);
+            if (!m) return;
+            lines[lineIdx] = m[1] === 'x' ? lines[lineIdx].replace('- [x] ', '- [ ] ') : lines[lineIdx].replace('- [ ] ', '- [x] ');
+            note.text = lines.join('\n');
+            haptic(8);
+            saveToStorage();
+            renderNotes();
+        }
+
+        // ============ Editor ============
+
+        let autosaveTimer = null, statusTimer = null;
+
+        function readEditor() {
+            return {
+                title: document.getElementById('noteTitle').value.trim(),
+                text: document.getElementById('noteText').value.trim(),
+                tags: selectedTags.slice(),
+                color: document.querySelector('#editorModal .color-dot.selected').dataset.value
+            };
+        }
+
+        function setSaveStatus(text, saved = false) {
+            const el = document.getElementById('saveStatus');
+            el.textContent = text;
+            el.classList.toggle('saved', saved);
+            el.style.opacity = text ? '1' : '0';
+        }
+
+        function editorChanged() {
+            setSaveStatus('Saving…');
+            updateEditorMeta();
+            updateChecklistBtn();
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(persistEditor, 500);
+        }
+
+        function persistEditor() {
+            const { title, text, tags, color } = readEditor();
+            if (editingId) {
+                const n = notes.find(x => x.id === editingId);
+                if (n) { n.title = title || 'Untitled'; n.text = text; n.tags = tags; n.color = color; saveToStorage(); }
+            }
+            if (title || text) {
+                store.set('velvet_draft', JSON.stringify({ editingId, title, text, tags, color, savedAt: Date.now() }));
+            } else {
+                store.remove('velvet_draft');
+            }
+            setSaveStatus('Saved ✓', true);
+            clearTimeout(statusTimer);
+            statusTimer = setTimeout(() => setSaveStatus(''), 2500);
+        }
+
+        function clearDraft() { store.remove('velvet_draft'); }
+
+        function recoverDraft() {
+            try {
+                const raw = store.get('velvet_draft');
+                if (!raw) return;
+                const d = JSON.parse(raw);
+                store.remove('velvet_draft');
+                if (!d || (!d.title && !d.text)) return;
+                if (d.editingId) {
+                    const n = notes.find(x => x.id === d.editingId);
+                    if (n) {
+                        n.title = d.title || 'Untitled';
+                        n.text = d.text || '';
+                        if (Array.isArray(d.tags)) n.tags = d.tags;
+                        if (d.color) n.color = d.color;
+                        draftRecovered = true;
+                        return;
+                    }
+                }
+                notes.push({
+                    id: uid(),
+                    title: d.title || 'Untitled',
+                    text: d.text || '',
+                    tags: Array.isArray(d.tags) ? d.tags : [],
+                    color: d.color || 'default',
+                    date: new Date().toISOString(),
+                    isFavorite: false, isPinned: false, isArchived: false, isTrashed: false
+                });
+                draftRecovered = true;
+            } catch (e) {}
+        }
+
+        function initAutoSave() {
+            document.getElementById('noteTitle').addEventListener('input', editorChanged);
+            document.getElementById('noteText').addEventListener('input', editorChanged);
+        }
+
+        // 4.5 — tag chip picker
+        function renderTagPicker() {
+            document.getElementById('tagPicker').innerHTML = TAGS.map(t =>
+                `<button type="button" class="tag-chip ${selectedTags.includes(t) ? 'on' : ''}" aria-pressed="${selectedTags.includes(t)}" onclick="toggleEditorTag('${t}')">${t}</button>`
+            ).join('');
+        }
+        function toggleEditorTag(t) {
+            haptic(8);
+            if (selectedTags.includes(t)) selectedTags = selectedTags.filter(x => x !== t);
+            else selectedTags.push(t);
+            renderTagPicker();
+            editorChanged();
+        }
+
+        // 4.7 — checklist mode toggle
+        function toggleChecklistMode() {
+            const body = document.getElementById('noteText');
+            const lines = body.value.split('\n');
+            body.value = isChecklistText(body.value)
+                ? lines.map(l => l.replace(/^- \[[ x]\] /, '')).join('\n')
+                : lines.map(l => (l.trim() ? `- [ ] ${l.replace(/^- /, '')}` : l)).join('\n');
+            haptic(8);
+            editorChanged();
+        }
+        function updateChecklistBtn() {
+            const on = isChecklistText(document.getElementById('noteText').value);
+            const btn = document.getElementById('checklistBtn');
+            btn.classList.toggle('on', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+
+        // 4.9 — word count + relative time
+        function updateEditorMeta() {
+            const words = wordsOf(document.getElementById('noteText').value);
+            let s = `${words} word${words === 1 ? '' : 's'}`;
+            if (editingId) {
+                const n = notes.find(x => x.id === editingId);
+                if (n) s += ` · Edited ${relTime(n.date)}`;
+            }
+            document.getElementById('editorMeta').textContent = s;
+        }
+
+        // 4.8 — reminders
+        function openReminderSheet() {
+            if (!editingId) { showToast('Save the note first (Done), then set a reminder'); return; }
+            const n = notes.find(x => x.id === editingId);
+            const input = document.getElementById('reminderInput');
+            if (n && n.reminderAt) {
+                const d = new Date(n.reminderAt);
+                const p = v => String(v).padStart(2, '0');
+                input.value = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+            } else {
+                input.value = '';
+            }
+            document.getElementById('reminderOverlay').classList.add('open');
+        }
+        function closeReminderSheet() { document.getElementById('reminderOverlay').classList.remove('open'); }
+
+        function setReminder() {
+            const n = notes.find(x => x.id === editingId);
+            if (!n) { closeReminderSheet(); return; }
+            const val = document.getElementById('reminderInput').value;
+            if (!val) { showToast('Pick a date & time first'); return; }
+            const when = new Date(val);
+            if (isNaN(when.getTime())) { showToast('Invalid date'); return; }
+            if (when.getTime() <= Date.now()) { showToast('Pick a future time'); return; }
+
+            n.reminderAt = when.toISOString();
+            n.reminded = false;
+            saveToStorage();
+            closeReminderSheet();
+            updateReminderBtn();
+            renderNotes();
+            showToast('Reminder set ✓');
+            haptic();
+
+            if ('Notification' in window && Notification.permission === 'default') {
+                try { Notification.requestPermission(); } catch (e) {}
+            }
+        }
+
+        function clearReminder() {
+            const n = notes.find(x => x.id === editingId);
+            if (n) { n.reminderAt = null; n.reminded = false; saveToStorage(); }
+            closeReminderSheet();
+            updateReminderBtn();
+            renderNotes();
+            showToast('Reminder cleared', { duration: 2000 });
+        }
+
+        function updateReminderBtn() {
+            const n = notes.find(x => x.id === editingId);
+            const on = !!(n && n.reminderAt && !n.reminded);
+            const btn = document.getElementById('reminderBtn');
+            btn.classList.toggle('on', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+
+        function initReminderEngine() {
+            setTimeout(checkReminders, 1500);
+            setInterval(checkReminders, 30000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
+        }
+
+        function checkReminders() {
+            const now = Date.now();
+            let changed = false;
+            notes.forEach(note => {
+                if (note.reminderAt && !note.reminded && !note.isTrashed && !note.isArchived &&
+                    new Date(note.reminderAt).getTime() <= now) {
+                    note.reminded = true;
+                    changed = true;
+                    haptic([80, 60, 80]);
+                    showToast(`Reminder: ${note.title || 'Untitled'}`, {
+                        actionText: 'Open',
+                        onAction: () => openEditor(note.id),
+                        duration: 8000
+                    });
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        try {
+                            const nt = new Notification('Velvet Notes — Reminder', { body: note.title || 'Untitled' });
+                            nt.onclick = () => window.focus();
+                        } catch (e) {}
+                    }
+                }
+            });
+            if (changed) { saveToStorage(); renderNotes(); }
+        }
+
+        // ============ Save / Discard / Close ============
+
+        function saveNote() { finishEditor(true); }
+
+        function finishEditor(announce) {
+            clearTimeout(autosaveTimer);
+            const origin = lastFocusEl;
+            const originNoteId = editingId;
+            const { title, text, tags, color } = readEditor();
+
+            if (editingId) {
+                const n = notes.find(x => x.id === editingId);
+                if (n) {
+                    n.title = title || 'Untitled';
+                    n.text = text;
+                    n.tags = tags;
+                    n.color = color;
+                    n.date = new Date().toISOString();
+                }
+            } else if (title || text) {
+                notes.push({
+                    id: uid(),
+                    title: title || 'Untitled',
+                    text: text,
+                    tags: tags,
+                    color: color,
+                    date: new Date().toISOString(),
+                    isFavorite: false, isPinned: false, isArchived: false, isTrashed: false
+                });
+            }
+
+            clearDraft();
+            saveToStorage();
+            closeEditor();
+            renderNotes();
+            restoreFocusAfterEditor(origin, originNoteId); // 5.2
+            if (announce) showToast('Saved ✓', { duration: 2000 });
+        }
+
+        function discardEditor() {
+            clearTimeout(autosaveTimer);
+            const origin = lastFocusEl;
+            const originNoteId = editingId;
+            if (editingId && editorSnapshot) {
+                const n = notes.find(x => x.id === editingId);
+                if (n) Object.assign(n, editorSnapshot);
+                saveToStorage();
+            }
+            clearDraft();
+            closeEditor();
+            renderNotes();
+            restoreFocusAfterEditor(origin, originNoteId); // 5.2
+        }
+
+        function toggleFavorite(id, btn) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            haptic();
+            note.isFavorite = !note.isFavorite;
+            saveToStorage();
+            if (btn) {
+                btn.classList.toggle('active', note.isFavorite);
+                btn.setAttribute('aria-pressed', note.isFavorite ? 'true' : 'false');
+            }
+            if (currentTab === 'favorites') setTimeout(renderNotes, 300);
+        }
+
+        function togglePin(id) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            haptic();
+            note.isPinned = !note.isPinned;
+            saveToStorage();
+            renderNotes();
+            showToast(note.isPinned ? 'Pinned to top' : 'Unpinned', { duration: 2000 });
+        }
+
+        function toggleArchive(id, quiet = false) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            haptic();
+            note.isArchived = !note.isArchived;
+            saveToStorage();
+            renderNotes();
+            if (!quiet) {
+                showToast(note.isArchived ? 'Note archived' : 'Note unarchived', {
+                    actionText: 'Undo',
+                    onAction: () => toggleArchive(id, true)
+                });
+            }
+        }
+
+        function softDelete(id) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            haptic();
+            note.isTrashed = true;
+            note.deletedAt = new Date().toISOString();
+            if (editingId === id) { editingId = null; clearDraft(); closeEditor(); }
+            saveToStorage();
+            renderNotes();
+            showToast('Note deleted', { actionText: 'Undo', onAction: () => restoreNote(id, true) });
+        }
+
+        function restoreNote(id, quiet = false) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            note.isTrashed = false;
+            note.deletedAt = null;
+            saveToStorage();
+            renderNotes();
+            if (!quiet) showToast('Note restored ✓', { duration: 2000 });
+        }
+
+        function deleteForever(id) {
+            pendingDeleteId = id;
+            document.getElementById('confirmTitle').textContent = 'Delete forever?';
+            document.getElementById('confirmSub').textContent = 'This note will be permanently deleted. This can\'t be undone.';
+            document.getElementById('confirmOverlay').classList.add('open');
+        }
+
+        function confirmDeleteYes() {
+            if (pendingDeleteId) {
+                haptic();
+                notes = notes.filter(n => n.id !== pendingDeleteId);
+                saveToStorage();
+                renderNotes();
+                showToast('Deleted permanently', { duration: 2000 });
+            }
+            closeConfirm();
+        }
+
+        function closeConfirm() {
+            document.getElementById('confirmOverlay').classList.remove('open');
+            pendingDeleteId = null;
+        }
+
+        function deleteCurrentNote() {
+            if (editingId) softDelete(editingId);
+        }
+
+        function shareNote(id) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            const text = `${note.title}\n\n${note.text}`;
+            if (navigator.share) {
+                navigator.share({ title: note.title, text: text }).catch(() => {});
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(text)
+                    .then(() => showToast('Note copied to clipboard ✓'))
+                    .catch(() => {});
+            } else {
+                showToast('Sharing is not supported here');
+            }
+        }
+
+        // ============ Menu: accent / sort / view / backup / trash ============
+
+        function openMenu() { renderMenuState(); document.getElementById('menuOverlay').classList.add('open'); }
+        function closeMenu() { document.getElementById('menuOverlay').classList.remove('open'); }
+
+        // 4.10 — sort & view state
+        function renderMenuState() {
+            document.querySelectorAll('.sort-btn').forEach(b => {
+                const on = b.dataset.sort === sortBy;
+                b.classList.toggle('on', on);
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            const isList = viewMode === 'list';
+            document.getElementById('viewBtnLabel').textContent = isList ? 'Gallery view' : 'List view';
+            document.querySelector('#viewBtn use').setAttribute('href', isList ? '#i-grid' : '#i-list');
+        }
+
+        function setSort(s) {
+            haptic(8);
+            sortBy = s;
+            store.set('velvet_sort', s);
+            renderMenuState();
+            renderNotes();
+        }
+
+        function toggleView() {
+            haptic(8);
+            viewMode = viewMode === 'list' ? 'masonry' : 'list';
+            store.set('velvet_view', viewMode);
+            applyView();
+            renderMenuState();
+        }
+        function applyView() {
+            document.body.classList.toggle('list-view', viewMode === 'list');
+        }
+
+        function menuExport() {
+            closeMenu();
+            try {
+                const data = JSON.stringify({ app: 'velvet-notes', version: 3, exportedAt: new Date().toISOString(), notes }, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `velvet-notes-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                showToast('Backup exported ✓');
+            } catch (e) {
+                showToast('Export isn\'t available in this environment');
+            }
+        }
+
+        function menuImport() {
+            closeMenu();
+            document.getElementById('importFile').click();
+        }
+
+        function menuTrash() {
+            closeMenu();
+            switchTab('trash', null);
+        }
+
+        function handleImportFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const data = JSON.parse(reader.result);
+                    const arr = Array.isArray(data) ? data : (Array.isArray(data.notes) ? data.notes : null);
+                    if (!arr) throw new Error('bad schema');
+
+                    let count = 0;
+                    arr.forEach(r => {
+                        if (!r || typeof r !== 'object') return;
+                        const text = typeof r.text === 'string' ? r.text : '';
+                        const title = typeof r.title === 'string' ? r.title : (typeof r.tag === 'string' ? r.tag : 'Untitled');
+                        if (!text && !title) return;
+                        const n = migrateNote({
+                            id: String(r.id || ''),
+                            title, text,
+                            tag: r.tag,
+                            tags: r.tags,
+                            color: r.color,
+                            date: r.date,
+                            isFavorite: !!r.isFavorite,
+                            isPinned: !!r.isPinned,
+                            isArchived: !!r.isArchived
+                        });
+                        if (!n.id || notes.some(x => x.id === n.id)) n.id = uid();
+                        n.isTrashed = false;
+                        n.deletedAt = null;
+                        notes.push(n);
+                        count++;
+                    });
+
+                    saveToStorage();
+                    renderNotes();
+                    showToast(count ? `Imported ${count} note${count === 1 ? '' : 's'} ✓` : 'No notes found in that file');
+                } catch (err) {
+                    showToast('Invalid backup file');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        // ============ Accent ============
+        // Light values are audited to pass BOTH jobs: white icon on solid (≥3:1)
+        // AND accent text on white/body (≥4.5:1). strong* = text-on-tint usage.
+        const ACCENTS = {
+            indigo:  { light: '#5a53e8', dark: '#818cf8', strongL: '#4f46e5', strongD: '#a5b4fc', glow: 'rgba(99,102,241,0.2)',  shadow: 'rgba(99,102,241,0.4)',  hover: 'rgba(99,102,241,0.5)',  dot: '#5a53e8' },
+            emerald: { light: '#047857', dark: '#34d399', strongL: '#065f46', strongD: '#6ee7b7', glow: 'rgba(4,120,87,0.18)',   shadow: 'rgba(4,120,87,0.35)',   hover: 'rgba(4,120,87,0.45)',   dot: '#059669' },
+            rose:    { light: '#d80f46', dark: '#fb7185', strongL: '#be123c', strongD: '#fda4af', glow: 'rgba(225,29,72,0.18)',  shadow: 'rgba(225,29,72,0.35)',  hover: 'rgba(225,29,72,0.45)',  dot: '#d80f46' },
+            amber:   { light: '#b45309', dark: '#fbbf24', strongL: '#92400e', strongD: '#fde68a', glow: 'rgba(180,83,9,0.2)',    shadow: 'rgba(180,83,9,0.35)',   hover: 'rgba(180,83,9,0.45)',   dot: '#d97706' }
+        };
+        let currentAccent = 'indigo';
+
+        function applyAccent(name) {
+            const a = ACCENTS[name] || ACCENTS.indigo;
+            currentAccent = ACCENTS[name] ? name : 'indigo';
+            const isDark = document.body.classList.contains('dark-mode');
+            const root = document.documentElement.style;
+            root.setProperty('--accent', isDark ? a.dark : a.light);
+            root.setProperty('--accent-strong', isDark ? a.strongD : a.strongL);
+            root.setProperty('--accent-glow', a.glow);
+            root.setProperty('--accent-shadow', a.shadow);
+            root.setProperty('--accent-shadow-hover', a.hover);
+            document.querySelectorAll('#accentDots .color-dot').forEach(d => {
+                const on = d.dataset.accent === currentAccent;
+                d.classList.toggle('selected', on);
+                d.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+        }
+        function setAccent(name) { haptic(); store.set('velvet_accent', name); applyAccent(name); }
+        function renderAccentDots() {
+            document.getElementById('accentDots').innerHTML = Object.entries(ACCENTS).map(([name, a]) =>
+                `<div class="color-dot ${name === currentAccent ? 'selected' : ''}" data-accent="${name}" style="background:${a.dot};" title="${name}" role="button" tabindex="0" aria-label="Accent color: ${name}" aria-pressed="${name === currentAccent}" onclick="setAccent('${name}')"></div>`
+            ).join('');
+            a11yIcons();
+        }
+
+        // ============ Editor open/close ============
+
+        function openEditor(id = null) {
+            const modal = document.getElementById('editorModal');
+            const titleInput = document.getElementById('noteTitle');
+            const bodyInput = document.getElementById('noteText');
+            const deleteBtn = document.getElementById('deleteBtn');
+
+            lastFocusEl = document.activeElement; // 5.2 — remember where focus came from
+
+            editingId = id;
+            document.querySelectorAll('#editorModal .color-dot[data-value]').forEach(d => d.classList.remove('selected'));
+
+            if (id) {
+                const note = notes.find(n => n.id === id);
+                editorSnapshot = { title: note.title, text: note.text, tags: [...(note.tags || [])], color: note.color, date: note.date };
+                titleInput.value = note.title || '';
+                bodyInput.value = note.text || '';
+                selectedTags = [...(note.tags || [])];
+                deleteBtn.style.display = 'block';
+                const colorDot = document.querySelector(`#editorModal .color-dot[data-value="${note.color}"]`);
+                if (colorDot) colorDot.classList.add('selected');
+                else document.querySelector('#editorModal .color-dot[data-value="default"]').classList.add('selected');
+            } else {
+                editorSnapshot = null;
+                titleInput.value = '';
+                bodyInput.value = '';
+                selectedTags = [];
+                deleteBtn.style.display = 'none';
+                document.querySelector('#editorModal .color-dot[data-value="default"]').classList.add('selected');
+            }
+
+            renderTagPicker();
+            setSaveStatus('');
+            updateEditorMeta();
+            updateChecklistBtn();
+            updateReminderBtn();
+            modal.classList.add('open');
+            document.getElementById('modalBackdrop').classList.add('open');
+
+            // 5.2 — auto-focus the title field (after the slide-in settles).
+            // On touch-only devices only for brand-new notes, so we don't pop
+            // the keyboard unexpectedly when reading an existing one.
+            const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+            const canHover = window.matchMedia('(hover: hover)').matches;
+            if (!id || isDesktop || canHover) {
+                setTimeout(() => titleInput.focus({ preventScroll: true }), 400);
+            }
+        }
+
+        function closeEditor() {
+            const modal = document.getElementById('editorModal');
+            modal.classList.remove('open');
+            modal.style.transform = '';
+            document.getElementById('modalBackdrop').classList.remove('open');
+            document.querySelector('.editor-tools').style.transform = '';
+            setSaveStatus('');
+            document.activeElement.blur();
+        }
+
+        function selectColor(el) {
+            document.querySelectorAll('#editorModal .color-dot').forEach(d => {
+                d.classList.remove('selected');
+                d.setAttribute('aria-pressed', 'false');
+            });
+            el.classList.add('selected');
+            el.setAttribute('aria-pressed', 'true');
+            editorChanged();
+        }
+
+        // ============ Keyboard-aware toolbar ============
+        function initKeyboardToolbar() {
+            if (!window.visualViewport) return;
+            const modal = document.getElementById('editorModal');
+            const tools = modal.querySelector('.editor-tools');
+            const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
+
+            const adjust = () => {
+                if (!modal.classList.contains('open') || isDesktop()) { tools.style.transform = ''; return; }
+                const el = document.activeElement;
+                const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+                if (!typing) { tools.style.transform = ''; return; }
+                const offset = window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop;
+                tools.style.transform = offset > 0 ? `translateY(${-offset}px)` : '';
+            };
+
+            window.visualViewport.addEventListener('resize', adjust);
+            window.visualViewport.addEventListener('scroll', adjust);
+        }
+
+        // ============ Card gestures ============
+        const SWIPE = { actionsWidth: 128, openThreshold: 60, favThreshold: 70, intent: 10 };
+
+        function attachSwipe(card, note, lp) {
+            const inner = card.querySelector('.card-inner');
+            let startX = 0, startY = 0, dx = 0, swiping = false, wasOpen = false;
+
+            card.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                dx = 0; swiping = false;
+                wasOpen = card.classList.contains('swiped');
+                inner.style.transition = 'none';
+                if (lp) lp.startLp();
+            }, { passive: true });
+
+            card.addEventListener('touchmove', (e) => {
+                const x = e.touches[0].clientX;
+                const y = e.touches[0].clientY;
+                if (lp && (Math.abs(x - startX) > SWIPE.intent || Math.abs(y - startY) > SWIPE.intent)) lp.cancelLp();
+                if (!swiping) {
+                    if (Math.abs(x - startX) > SWIPE.intent && Math.abs(x - startX) > Math.abs(y - startY)) swiping = true;
+                    else return;
+                }
+                dx = x - startX;
+                let pos = dx + (wasOpen ? -SWIPE.actionsWidth : 0);
+                pos = Math.max(-(SWIPE.actionsWidth + 30), Math.min(90, pos));
+                inner.style.transform = `translateX(${pos}px)`;
+                e.preventDefault();
+            }, { passive: false });
+
+            const settle = () => {
+                if (lp) lp.cancelLp();
+                inner.style.transition = '';
+                if (!swiping) return;
+                const end = dx + (wasOpen ? -SWIPE.actionsWidth : 0);
+                if (end > SWIPE.favThreshold) {
+                    if (!note.isTrashed) toggleFavorite(note.id, card.querySelector('.fav-btn'));
+                    closeSwipedCard(card);
+                } else if (end < -SWIPE.openThreshold) {
+                    closeAllSwiped(card);
+                    inner.style.transform = `translateX(${-SWIPE.actionsWidth}px)`;
+                    card.classList.add('swiped');
+                } else {
+                    closeSwipedCard(card);
+                }
+                dx = 0; swiping = false; wasOpen = false;
+            };
+
+            card.addEventListener('touchend', settle);
+            card.addEventListener('touchcancel', () => {
+                if (lp) lp.cancelLp();
+                inner.style.transition = '';
+                closeSwipedCard(card);
+                dx = 0; swiping = false;
+            });
+        }
+
+        function closeSwipedCard(card) {
+            card.classList.remove('swiped');
+            const inner = card.querySelector('.card-inner');
+            if (inner) { inner.style.transition = ''; inner.style.transform = ''; }
+        }
+        function closeAllSwiped(except = null) {
+            document.querySelectorAll('.card.swiped').forEach(c => { if (c !== except) closeSwipedCard(c); });
+        }
+        function initSwipeDismissal() {
+            document.addEventListener('touchstart', (e) => {
+                document.querySelectorAll('.card.swiped').forEach(c => {
+                    if (!c.contains(e.target)) closeSwipedCard(c);
+                });
+            }, { passive: true });
+        }
+
+        // ============ Long-press Action Sheet ============
+        function openActionSheet(id) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            sheetNoteId = id;
+            const isTrashed = !!note.isTrashed;
+            document.getElementById('sheetNormal').style.display = isTrashed ? 'none' : '';
+            document.getElementById('sheetTrash').style.display = isTrashed ? '' : 'none';
+
+            if (!isTrashed) {
+                document.getElementById('sheetPinBtn').innerHTML =
+                    `<svg class="ic"><use href="#i-pin"/></svg><span>${note.isPinned ? 'Unpin note' : 'Pin note'}</span>`;
+                document.getElementById('sheetFavBtn').innerHTML =
+                    `<svg class="ic ${note.isFavorite ? 'fill' : ''}"><use href="#i-heart"/></svg><span>${note.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}</span>`;
+                const colors = [
+                    ['default', '#f1f5f9', 'border:1px solid #cbd5e1;'],
+                    ['rose',    '#fecdd3', ''],
+                    ['blue',    '#bfdbfe', ''],
+                    ['green',   '#bbf7d0', ''],
+                    ['yellow',  '#fde047', '']
+                ];
+                const current = note.color || 'default';
+                document.getElementById('sheetDots').innerHTML = colors.map(([v, c, extra]) =>
+                    `<div class="color-dot ${current === v ? 'selected' : ''}" style="background:${c};${extra}" role="button" tabindex="0" aria-label="Set note color: ${v}" aria-pressed="${current === v}" onclick="sheetSetColor('${v}')"></div>`
+                ).join('');
+            }
+            document.getElementById('sheetOverlay').classList.add('open');
+            a11yIcons();
+        }
+        function closeActionSheet() {
+            document.getElementById('sheetOverlay').classList.remove('open');
+            sheetNoteId = null;
+        }
+        function initOverlayDismissal() {
+            ['sheetOverlay', 'confirmOverlay', 'menuOverlay', 'reminderOverlay', 'shortcutsOverlay'].forEach(id => {
+                document.getElementById(id).addEventListener('click', (e) => {
+                    if (e.target.id === 'sheetOverlay') closeActionSheet();
+                    if (e.target.id === 'confirmOverlay') closeConfirm();
+                    if (e.target.id === 'menuOverlay') closeMenu();
+                    if (e.target.id === 'reminderOverlay') closeReminderSheet();
+                    if (e.target.id === 'shortcutsOverlay') closeShortcuts();
+                });
+            });
+        }
+        function sheetTogglePin() { const id = sheetNoteId; closeActionSheet(); togglePin(id); }
+        function sheetToggleFav() { const id = sheetNoteId; closeActionSheet(); toggleFavorite(id, null); renderNotes(); }
+        function sheetDelete()    { const id = sheetNoteId; closeActionSheet(); softDelete(id); }
+        function sheetShare()     { const id = sheetNoteId; closeActionSheet(); shareNote(id); }
+        function sheetRestore()   { const id = sheetNoteId; closeActionSheet(); restoreNote(id); }
+        function sheetForever()   { const id = sheetNoteId; closeActionSheet(); deleteForever(id); }
+        function sheetSetColor(value) {
+            const note = notes.find(n => n.id === sheetNoteId);
+            if (!note) return;
+            haptic();
+            note.color = value;
+            saveToStorage();
+            closeActionSheet();
+            renderNotes();
+        }
+
+        // ============ Pull-down to dismiss ============
+        function initModalPullToDismiss() {
+            const modal = document.getElementById('editorModal');
+            const scroller = modal.querySelector('.editor-content');
+            const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
+            let startY = 0, dy = 0, dragging = false;
+
+            modal.addEventListener('touchstart', (e) => {
+                if (!modal.classList.contains('open') || isDesktop()) return;
+                if (scroller.scrollTop > 0) { dragging = false; return; }
+                startY = e.touches[0].clientY;
+                dy = 0; dragging = true;
+                modal.style.transition = 'none';
+            }, { passive: true });
+
+            modal.addEventListener('touchmove', (e) => {
+                if (!dragging) return;
+                dy = e.touches[0].clientY - startY;
+                if (dy < 0) dy = 0;
+                modal.style.transform = `translateY(${dy}px)`;
+                if (dy > 4) e.preventDefault();
+            }, { passive: false });
+
+            const finish = () => {
+                if (!dragging) return;
+                dragging = false;
+                modal.style.transition = '';
+                const dismissAt = Math.max(120, window.innerHeight * 0.25);
+                if (dy > dismissAt) finishEditor(false);
+                else modal.style.transform = '';
+                dy = 0;
+            };
+            modal.addEventListener('touchend', finish);
+            modal.addEventListener('touchcancel', finish);
+        }
+
+        // ============ 4.11 Keyboard shortcuts ============
+        function openShortcuts() { document.getElementById('shortcutsOverlay').classList.add('open'); }
+        function closeShortcuts() { document.getElementById('shortcutsOverlay').classList.remove('open'); }
+
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') trapEditorTab(e); // 5.2 — keep Tab inside the dialog
+
+                const modalOpen = document.getElementById('editorModal').classList.contains('open');
+                const typing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName || '');
+
+                // Ctrl/Cmd + Enter → save from inside the editor
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && modalOpen) {
+                    e.preventDefault();
+                    saveNote();
+                    return;
+                }
+
+                // Esc chain: confirm → reminder → shortcuts → menu → sheet → editor
+                if (e.key === 'Escape') {
+                    if (document.getElementById('confirmOverlay').classList.contains('open')) closeConfirm();
+                    else if (document.getElementById('reminderOverlay').classList.contains('open')) closeReminderSheet();
+                    else if (document.getElementById('shortcutsOverlay').classList.contains('open')) closeShortcuts();
+                    else if (document.getElementById('menuOverlay').classList.contains('open')) closeMenu();
+                    else if (document.getElementById('sheetOverlay').classList.contains('open')) closeActionSheet();
+                    else if (modalOpen) finishEditor(false);
+                    return;
+                }
+
+                if (typing) return;
+
+                if (e.key === '/') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                } else if (e.key === 'n' || e.key === 'N') {
+                    if (!modalOpen) { e.preventDefault(); openEditor(); }
+                } else if (e.key === '?') {
+                    e.preventDefault();
+                    const ov = document.getElementById('shortcutsOverlay');
+                    ov.classList.contains('open') ? closeShortcuts() : openShortcuts();
+                }
+            });
+        }
+
+        // ============ Navigation & Filter ============
+        function switchTab(tab, btn) {
+            currentTab = tab;
+            tagFilter = null;
+            renderFilterPill();
+            document.querySelectorAll('.nav-item').forEach(b => {
+                b.classList.remove('active');
+                b.removeAttribute('aria-current');
+            });
+            if (btn) {
+                btn.classList.add('active');
+                btn.setAttribute('aria-current', 'page');
+            }
+            const titles = { 'all': 'My Notes', 'favorites': 'Favorites', 'work': 'Work', 'personal': 'Personal', 'archive': 'Archived', 'trash': 'Trash' };
+            document.getElementById('pageTitle').innerText = titles[tab] || 'My Notes';
+            renderNotes();
+        }
+
+        // 4.6 — debounced search (~150ms)
+        let searchTimer = null;
+        function filterNotes() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(renderNotes, 150);
+        }
+
+        // ============ Utilities ============
+
+        // 6.2 — every save goes to the localStorage shadow (sync) AND
+        // the IndexedDB store (async, fire-and-forget, self-guarding).
+        function saveToStorage() {
+            const json = JSON.stringify(notes);
+            store.set('velvet_notes', json);
+            db.set('velvet_notes', json);
+        }
+
+        // ============ Theme ============
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            setThemeIcon(isDark);
+            store.set('velvet_theme', isDark ? 'dark' : 'light');
+            applyAccent(currentAccent);
+        }
+        function setThemeIcon(isDark) {
+            document.querySelector('#themeIcon use').setAttribute('href', isDark ? '#i-sun' : '#i-moon');
+        }
+        // 5.4 — system theme by default; follows OS changes live until the user
+        // explicitly picks a theme of their own.
+        function loadTheme() {
+            const saved = store.get('velvet_theme');
+            const mq = window.matchMedia('(prefers-color-scheme: dark)');
+            const isDark = saved ? saved === 'dark' : mq.matches;
+            document.body.classList.toggle('dark-mode', isDark);
+            setThemeIcon(isDark);
+
+            if (mq.addEventListener) {
+                mq.addEventListener('change', (e) => {
+                    if (store.get('velvet_theme')) return; // user override wins
+                    document.body.classList.toggle('dark-mode', e.matches);
+                    setThemeIcon(e.matches);
+                    applyAccent(currentAccent);
+                });
+            }
+        }
+
+    </script>
+</body>
+</html>
